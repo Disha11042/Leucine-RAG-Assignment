@@ -1,73 +1,101 @@
-# Leucine AI Backend Assignment
+# Leucine AI Backend Assignment – FastAPI + RAG
 
-A FastAPI-based backend application that implements a **Retrieval Augmented Generation (RAG)** pipeline for document upload and intelligent question answering.
+A FastAPI-based backend application implementing a basic **Retrieval-Augmented Generation (RAG)** pipeline with JWT authentication, document ingestion, embeddings generation, similarity-based retrieval, and AI-powered question answering.
 
 The application allows users to:
+
 - Create an account and authenticate using JWT
-- Upload documents
-- Process documents into searchable chunks
+- Upload text documents
+- Process documents into smaller chunks
 - Generate embeddings using Sentence Transformers
-- Retrieve relevant document context
-- Ask questions and receive AI-generated answers based on uploaded documents
+- Store document chunks and embeddings
+- Retrieve relevant context using similarity search
+- Ask questions and receive AI-generated answers
 
 ---
 
 # 🚀 Features
 
-## Authentication
+## 🔐 Authentication
+
+Implemented secure user authentication.
+
+Features:
+
 - User signup
 - User login
 - JWT-based authentication
 - Password hashing using bcrypt
+- Protected API access using Bearer tokens
 
-## Document Management
+
+## 📄 Document Management
+
+Users can:
+
 - Upload text documents
 - Store document metadata
 - Split documents into smaller chunks
-- Generate embeddings for document chunks
+- Generate embeddings for chunks
+- Store chunks for retrieval
 
-## RAG-based Chat System
-- Accept user questions
-- Convert queries into embeddings
-- Retrieve relevant document chunks
-- Generate contextual answers
-- Return AI-powered responses
 
-## Database
-- SQLAlchemy ORM integration
-- Database models for:
-  - Users
-  - Documents
-  - Document Chunks
-  - Error Logs
+## 🧠 Retrieval-Augmented Generation (RAG)
+
+The RAG pipeline includes:
+
+- Text chunking
+- Embedding generation
+- Similarity-based retrieval
+- Context-based answer generation
+
+
+## ⚠️ Exception Handling
+
+Custom FastAPI middleware is implemented for handling unexpected errors.
+
+The middleware:
+
+- Captures unhandled exceptions
+- Logs errors into the database
+- Returns standardized JSON error responses
+
 
 ---
 
 # 🏗️ Tech Stack
 
 ## Backend
+
 - Python
 - FastAPI
 - SQLAlchemy
 - Pydantic
+- Uvicorn
+
 
 ## Authentication
-- JWT Authentication
+
+- JWT
+- Python-JOSE
 - Passlib
 - bcrypt
 
+
 ## Database
+
 - PostgreSQL
 - SQLAlchemy ORM
 
+
 ## AI / RAG
+
 - Sentence Transformers
 - Hugging Face Models
-- Vector Embeddings
+- Embeddings
 - Similarity Search
+- OpenAI API integration
 
-## Server
-- Uvicorn
 
 ---
 
@@ -78,47 +106,51 @@ Leucine-RAG-Assignment/
 
 │
 ├── app/
-│   │
+│
 │   ├── main.py
-│   │
+│
 │   ├── api/
 │   │   ├── auth.py
 │   │   ├── documents.py
 │   │   └── chat.py
-│   │
+│
 │   ├── core/
 │   │   ├── database.py
 │   │   ├── security.py
 │   │   └── config.py
-│   │
+│
 │   ├── models/
 │   │   ├── user.py
 │   │   ├── document.py
 │   │   ├── chunk.py
 │   │   └── error_log.py
-│   │
+│
 │   ├── schemas/
-│   │   ├── auth_schema.py
+│   │   ├── user_schema.py
 │   │   ├── document_schema.py
 │   │   └── chat_schema.py
-│   │
-│   └── services/
-│       ├── document_service.py
-│       └── rag_service.py
+│
+│   ├── services/
+│   │   ├── auth_service.py
+│   │   ├── document_service.py
+│   │   ├── embedding_service.py
+│   │   └── rag_service.py
+│
+│   └── middleware/
+│       └── exception_logger.py
 │
 ├── requirements.txt
 ├── README.md
 ├── .env.example
 ├── .gitignore
-│
-└── alembic/
+└── .markdownlint.json
 ```
 
 ---
 
 # ⚙️ Installation and Setup
 
-## 1. Clone the Repository
+## 1. Clone Repository
 
 ```bash
 git clone <repository-url>
@@ -130,21 +162,19 @@ cd Leucine-RAG-Assignment
 
 ## 2. Create Virtual Environment
 
-```bash
-python -m venv .venv
-```
-
-Activate virtual environment:
-
 ### Windows
 
 ```bash
+python -m venv .venv
+
 .venv\Scripts\activate
 ```
 
-### Linux/Mac
+### Linux / Mac
 
 ```bash
+python -m venv .venv
+
 source .venv/bin/activate
 ```
 
@@ -176,6 +206,16 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 HF_TOKEN=your_huggingface_token_here
 ```
 
+## Variable Description
+
+| Variable | Description |
+|----------|-------------|
+| DATABASE_URL | PostgreSQL database connection URL |
+| SECRET_KEY | Secret key used for JWT generation |
+| ALGORITHM | JWT encryption algorithm |
+| ACCESS_TOKEN_EXPIRE_MINUTES | JWT token expiry duration |
+| HF_TOKEN | Hugging Face API token |
+
 ---
 
 # ▶️ Running the Application
@@ -186,13 +226,13 @@ Start FastAPI server:
 uvicorn app.main:app --reload
 ```
 
-The server will start at:
+Application runs at:
 
 ```
 http://127.0.0.1:8000
 ```
 
-Swagger API Documentation:
+Swagger Documentation:
 
 ```
 http://127.0.0.1:8000/docs
@@ -200,36 +240,86 @@ http://127.0.0.1:8000/docs
 
 ---
 
+# 🔐 Authentication Flow
+
+1. User registers using `/auth/signup`.
+2. Password is securely hashed using bcrypt.
+3. User logs in using `/auth/login`.
+4. Credentials are verified.
+5. JWT access token is generated.
+6. Token is used to access protected APIs.
+
+For protected APIs:
+
+```
+Authorization: Bearer <access_token>
+```
+
+---
+
+# 📄 Document Ingestion Flow
+
+When a document is uploaded:
+
+1. Document content is received through API.
+2. Document metadata is stored.
+3. Text is divided into smaller chunks.
+4. Sentence Transformer generates embeddings.
+5. Chunk data and embeddings are stored.
+6. Stored embeddings are used during retrieval.
+
+
+---
+
 # 🔄 RAG Pipeline Flow
+
 
 ```
 User uploads document
-          |
-          ↓
+
+        |
+        ↓
+
 Document stored in database
-          |
-          ↓
-Text extracted and split into chunks
-          |
-          ↓
+
+        |
+        ↓
+
+Text extracted and divided into chunks
+
+        |
+        ↓
+
 Chunks converted into embeddings
-          |
-          ↓
+
+        |
+        ↓
+
 Embeddings stored
-          |
-          ↓
-User asks a question
-          |
-          ↓
+
+        |
+        ↓
+
+User asks question
+
+        |
+        ↓
+
 Question converted into embedding
-          |
-          ↓
-Similarity search finds relevant chunks
-          |
-          ↓
-Relevant context provided to AI model
-          |
-          ↓
+
+        |
+        ↓
+
+Similarity search retrieves relevant chunks
+
+        |
+        ↓
+
+Relevant context sent to LLM
+
+        |
+        ↓
+
 Generated answer returned
 ```
 
@@ -291,9 +381,9 @@ Response:
 
 ---
 
-# Documents
+## Documents
 
-## Upload Document
+### Upload Document
 
 ```
 POST /documents/
@@ -304,24 +394,15 @@ Request:
 ```json
 {
 "title":"FastAPI Notes",
-"content":"FastAPI is a modern Python framework used to build APIs."
-}
-```
-
-Response:
-
-```json
-{
-"id":1,
-"title":"FastAPI Notes"
+"content":"FastAPI is a modern Python framework."
 }
 ```
 
 ---
 
-# Chat
+## Chat
 
-## Ask Question
+### Ask Question
 
 ```
 POST /chat/
@@ -339,44 +420,115 @@ Response:
 
 ```json
 {
-"answer":"FastAPI is a modern Python framework used to build APIs."
+"answer":"FastAPI is a modern Python framework."
 }
 ```
 
 ---
 
-# 🗄️ Database Models
+# 🗄️ Database Design
 
-## User
+## User Table
 
 Stores:
+
 - User ID
 - Email
 - Hashed Password
 
 
-## Document
+## Document Table
 
 Stores:
+
 - Document ID
 - Title
 - Content
+- User reference
 
 
-## Chunk
+## Chunk Table
 
 Stores:
+
 - Chunk ID
 - Document reference
 - Text chunk
 - Embedding information
 
 
-## Error Log
+## Error Log Table
 
 Stores:
-- Error details
+
 - Timestamp
+- Endpoint
+- HTTP Method
+- Error Message
+- Stack Trace
+- User ID
+
+
+---
+
+# 🗂️ Database Indexing Strategy
+
+Indexes are created to improve query performance.
+
+## User Table
+
+- Email field is indexed because login searches users using email.
+- Unique constraint prevents duplicate accounts.
+
+
+## Document Table
+
+- User ID is indexed for faster retrieval of user documents.
+
+
+## Chunk Table
+
+- Document ID is indexed to quickly retrieve chunks belonging to a document.
+- Embeddings are stored for similarity search.
+
+
+## Error Log Table
+
+- Timestamp is indexed to quickly access recent errors.
+- Endpoint indexing helps debugging.
+
+
+---
+
+# ⚠️ Exception Handling Middleware
+
+Custom middleware handles unexpected application errors.
+
+It performs:
+
+- Global exception capturing
+- Error logging into PostgreSQL
+- JSON error response generation
+
+
+Logged information:
+
+- Timestamp
+- Endpoint
+- HTTP method
+- Error message
+- Stack trace
+- Authenticated user ID (if available)
+
+
+Example response:
+
+```json
+{
+    "error":"Internal Server Error",
+    "message":"Something went wrong"
+}
+```
 
 ---
 
@@ -384,11 +536,12 @@ Stores:
 
 ## Document Chunking
 
-Large documents are divided into smaller sections called chunks.
+Large documents are divided into smaller pieces.
 
 Benefits:
-- Improves retrieval accuracy
-- Reduces processing complexity
+
+- Better retrieval accuracy
+- Faster processing
 
 
 ## Embeddings
@@ -400,12 +553,12 @@ These vectors represent semantic meaning.
 
 ## Similarity Search
 
-The user's question embedding is compared with document embeddings to find the most relevant information.
+User questions are converted into embeddings and compared with stored embeddings to find relevant information.
 
 
 ## Response Generation
 
-The retrieved context is used to generate a meaningful answer related to the uploaded documents.
+Retrieved context is provided to the AI model to generate the final answer.
 
 ---
 
@@ -416,6 +569,7 @@ APIs can be tested using:
 - Swagger UI
 - Postman
 - Curl
+
 
 Swagger:
 
@@ -429,21 +583,20 @@ http://127.0.0.1:8000/docs
 
 Main packages:
 
-```
-FastAPI
-Uvicorn
-SQLAlchemy
-Alembic
-Pydantic
-Python-JOSE
-Passlib
-bcrypt
-Sentence Transformers
-Transformers
-Torch
-OpenAI
-Scikit-learn
-```
+- FastAPI
+- Uvicorn
+- SQLAlchemy
+- Alembic
+- Pydantic
+- Python-JOSE
+- Passlib
+- bcrypt
+- Sentence Transformers
+- Transformers
+- Torch
+- OpenAI
+- Scikit-learn
+
 
 ---
 
@@ -453,16 +606,34 @@ Implemented security features:
 
 - Password hashing
 - JWT authentication
-- Environment variable based configuration
+- Environment variable configuration
 - Protected secrets
+- Secure API access
+
+
+---
+
+# 🚀 Future Improvements
+
+Possible enhancements:
+
+- Redis caching
+- Kafka/message broker integration
+- Background document processing
+- Docker deployment
+- Vector database integration (FAISS, ChromaDB)
+- Streaming LLM responses
+- Unit and integration testing
+
 
 ---
 
 # 👩‍💻 Author
 
-Disha M D
+**Disha M D**
 
 Information Science and Engineering
+
 
 ---
 
