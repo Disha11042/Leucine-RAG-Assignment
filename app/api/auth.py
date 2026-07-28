@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.user import User
+from app.schemas.user_schema import UserCreate, UserResponse
 from app.core.security import (
+    hash_password,
     verify_password,
-    create_access_token
+    create_access_token,
 )
-
-from app.schemas.auth_schema import UserCreate, UserResponse
 
 
 router = APIRouter(
@@ -18,7 +18,10 @@ router = APIRouter(
 )
 
 
+# --------------------
 # Signup
+# --------------------
+
 @router.post("/signup", response_model=UserResponse)
 def signup(
     user: UserCreate,
@@ -29,7 +32,6 @@ def signup(
         User.email == user.email
     ).first()
 
-
     if existing_user:
         raise HTTPException(
             status_code=400,
@@ -37,13 +39,10 @@ def signup(
         )
 
 
-    from app.core.security import hash_password
-
-
     new_user = User(
         username=user.username,
         email=user.email,
-        password=hash_password(user.password)
+        hashed_password=hash_password(user.password)
     )
 
 
@@ -51,12 +50,14 @@ def signup(
     db.commit()
     db.refresh(new_user)
 
-
     return new_user
 
 
 
-# Login (Swagger Authorize compatible)
+# --------------------
+# Login
+# --------------------
+
 @router.post("/login")
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -77,7 +78,7 @@ def login(
 
     if not verify_password(
         form_data.password,
-        user.password
+        user.hashed_password
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -85,7 +86,7 @@ def login(
         )
 
 
-    access_token = create_access_token(
+    token = create_access_token(
         {
             "sub": str(user.id),
             "email": user.email
@@ -94,6 +95,6 @@ def login(
 
 
     return {
-        "access_token": access_token,
+        "access_token": token,
         "token_type": "bearer"
     }
