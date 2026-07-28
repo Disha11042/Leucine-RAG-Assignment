@@ -153,9 +153,11 @@ Leucine-RAG-Assignment/
 ## 1. Clone Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Disha11042/Leucine-RAG-Assignment.git
 
 cd Leucine-RAG-Assignment
+
+
 ```
 
 ---
