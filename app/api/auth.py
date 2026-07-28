@@ -1,20 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordRequestForm
 
 from app.core.database import get_db
-
-from app.schemas.user_schema import (
-    UserCreate,
-    UserResponse,
-    LoginRequest,
-    TokenResponse
+from app.models.user import User
+from app.core.security import (
+    verify_password,
+    create_access_token
 )
 
-from app.services.auth_service import (
-    create_user,
-    authenticate_user,
-    login_user
-)
+from app.schemas.auth_schema import UserCreate, UserResponse
 
 
 router = APIRouter(
@@ -23,63 +18,82 @@ router = APIRouter(
 )
 
 
-# Signup API
-@router.post(
-    "/signup",
-    response_model=UserResponse
-)
+# Signup
+@router.post("/signup", response_model=UserResponse)
 def signup(
     user: UserCreate,
     db: Session = Depends(get_db)
 ):
 
-    new_user = create_user(
-        db,
-        user.username,
-        user.email,
-        user.password
-    )
+    existing_user = db.query(User).filter(
+        User.email == user.email
+    ).first()
 
 
-    if new_user is None:
+    if existing_user:
         raise HTTPException(
             status_code=400,
             detail="Email already registered"
         )
 
 
+    from app.core.security import hash_password
+
+
+    new_user = User(
+        username=user.username,
+        email=user.email,
+        password=hash_password(user.password)
+    )
+
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+
     return new_user
 
 
 
-# Login API
-@router.post(
-    "/login",
-    response_model=TokenResponse
-)
+# Login (Swagger Authorize compatible)
+@router.post("/login")
 def login(
-    user: LoginRequest,
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
 
-    authenticated_user = authenticate_user(
-        db,
-        user.email,
-        user.password
-    )
+    user = db.query(User).filter(
+        User.email == form_data.username
+    ).first()
 
 
-    if authenticated_user is None:
+    if not user:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
 
 
-    token = login_user(authenticated_user)
+    if not verify_password(
+        form_data.password,
+        user.password
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
+
+
+    access_token = create_access_token(
+        {
+            "sub": str(user.id),
+            "email": user.email
+        }
+    )
 
 
     return {
-        "access_token": token,
+        "access_token": access_token,
         "token_type": "bearer"
     }
